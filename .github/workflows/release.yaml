@@ -47,18 +47,6 @@ jobs:
               build/charts/remotedialer-proxy/values.yaml
 
           helm package -d ./dist/artifacts ./build/charts/remotedialer-proxy
-
-      - name: Create release on Github
-        env:
-          GH_TOKEN:  ${{ github.token }}
-        run: |
-          cd dist/artifacts
-
-          if [[ "${{ github.ref_name }}" == *-rc* ]]; then
-            gh --repo "${{ github.repository }}" release create ${{ github.ref_name }} --verify-tag --generate-notes --prerelease remotedialer-proxy*.tgz
-          else
-            gh --repo "${{ github.repository }}" release create ${{ github.ref_name }} --verify-tag --generate-notes remotedialer-proxy*.tgz
-          fi
   image:
     runs-on: ubuntu-latest
     permissions:

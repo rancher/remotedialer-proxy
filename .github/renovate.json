@@ -1,0 +1,19 @@
+{
+  "extends": [
+    "github>rancher/renovate-config#release"
+  ],
+  "baseBranches": [
+    "main"
+  ],
+  "prHourlyLimit": 2,
+  "packageRules": [
+    {
+      "enabled": false,
+      "matchPackageNames": [
+        "/k8s.io/*/",
+        "/sigs.k8s.io/*/",
+        "/github.com/prometheus/*/"
+      ]
+    }
+  ]
+}

@@ -67,8 +67,8 @@ jobs:
         uses: rancher-eio/read-vault-secrets@main
         with:
           secrets: |
-            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials username | DOCKER_USERNAME;
-            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials password | DOCKER_PASSWORD
+            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials username | DOCKER_USERNAME;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials password | DOCKER_PASSWORD
 
       - name: Set up QEMU
         # https://github.com/docker/setup-qemu-action/releases/tag/v3.1.0
@@ -133,8 +133,8 @@ jobs:
         uses: rancher-eio/read-vault-secrets@main
         with:
           secrets: |
-            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials username | DOCKER_USERNAME ;
-            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials password | DOCKER_PASSWORD
+            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials username | DOCKER_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials password | DOCKER_PASSWORD
 
       - name: Log in to the Container registry
         uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0

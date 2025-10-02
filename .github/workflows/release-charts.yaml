@@ -46,7 +46,7 @@ jobs:
         with:
           repository: ${{ env.CHARTS_REPO }}
           ref: "${{ env.CHARTS_REF }}"
-          token: ${{ steps.read_token.outputs.GH_TOKEN }}
+          token: ${{ env.GH_TOKEN }}
           path: charts
           # Allow making git push request later on
           persist-credentials: true
@@ -54,7 +54,7 @@ jobs:
       - name: Configure the committer
         run: |
           cd charts
-          user_id=$(GH_TOKEN="${{ steps.read_token.outputs.GH_TOKEN }}" gh api "/user" --jq .id)
+          user_id=$(gh api /user --jq .id)
           git config --global user.name "$APP_USER"
           git config --global user.email "${user_id}+${APP_USER}@users.noreply.github.com"
         env:

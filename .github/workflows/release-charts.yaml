@@ -35,6 +35,7 @@ jobs:
           path: remotedialer-proxy
 
       - uses: rancher-eio/read-vault-secrets@main
+        id: read_token
         with:
           secrets: |
             github/token/rancher--charts--pull_requests--write token | GH_TOKEN
@@ -44,7 +45,7 @@ jobs:
         with:
           repository: ${{ github.repository_owner }}/charts
           ref: "${{ env.CHARTS_REF }}"
-          token: ${{ env.GH_TOKEN }}
+          token: ${{ steps.read_token.outputs.gh_token }}
           path: charts
           # Allow making git push request later on
           persist-credentials: true
@@ -56,7 +57,7 @@ jobs:
           git config --global user.name "$APP_USER"
           git config --global user.email "${user_id}+${APP_USER}@users.noreply.github.com"
         env:
-          GH_TOKEN: ${{ GH_TOKEN }}
+          GH_TOKEN: ${{ steps.read_token.outputs.gh_token }}
           APP_USER: "rancher-pr-and-push-remotedialer-proxy [bot]"
 
       - name: Install dependencies
@@ -72,7 +73,7 @@ jobs:
 
       - name: Push and create pull request
         env:
-          GH_TOKEN: ${{ GH_TOKEN }}
+          GH_TOKEN: ${{ steps.read_token.outputs.gh_token }}
         run: |
           cd charts
           git push origin "$BRANCH"

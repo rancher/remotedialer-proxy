@@ -57,7 +57,7 @@ jobs:
           git config --global user.email "${user_id}+${APP_USER}@users.noreply.github.com"
         env:
           GH_TOKEN: ${{ GH_TOKEN }}
-          APP_USER: "rancher-pr-and-push-webhook [bot]"
+          APP_USER: "rancher-pr-and-push-remotedialer-proxy [bot]"
 
       - name: Install dependencies
         run: sudo snap install yq --channel=v4/stable

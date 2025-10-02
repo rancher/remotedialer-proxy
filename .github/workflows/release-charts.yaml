@@ -54,9 +54,8 @@ jobs:
       - name: Configure the committer
         run: |
           cd charts
-          user_id=$(gh api /user --jq .id)
           git config --global user.name "$APP_USER"
-          git config --global user.email "${user_id}+${APP_USER}@users.noreply.github.com"
+          git config --global user.email "${APP_USER}@users.noreply.github.com"
         env:
           GH_TOKEN: ${{ env.GH_TOKEN }}
           APP_USER: "rancher-pr-and-push-remotedialer-proxy[bot]"

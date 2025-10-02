@@ -41,15 +41,12 @@ jobs:
           secrets: |
             github/token/rancher--charts--pull_requests--write token | GH_TOKEN
       
-      - name: Export GH_TOKEN
-        run: echo "GH_TOKEN=${{ steps.read_token.outputs.gh_token }}" >> $GITHUB_ENV
-
       - name: Checkout charts repository
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           repository: ${{ env.CHARTS_REPO }}
           ref: "${{ env.CHARTS_REF }}"
-          token: ${{ env.GH_TOKEN }}
+          token: ${{ steps.read_token.outputs.GH_TOKEN }}
           path: charts
           # Allow making git push request later on
           persist-credentials: true
@@ -57,12 +54,12 @@ jobs:
       - name: Configure the committer
         run: |
           cd charts
-          user_id=$(gh api "/users/$APP_USER" --jq .id)
+          user_id=$(GH_TOKEN="${{ steps.read_token.outputs.GH_TOKEN }}" gh api "/user" --jq .id)
           git config --global user.name "$APP_USER"
           git config --global user.email "${user_id}+${APP_USER}@users.noreply.github.com"
         env:
           GH_TOKEN: ${{ env.GH_TOKEN }}
-          APP_USER: "rancher-pr-and-push-remotedialer-proxy [bot]"
+          APP_USER: "rancher-pr-and-push-remotedialer-proxy[bot]"
 
       - name: Install dependencies
         run: sudo snap install yq --channel=v4/stable

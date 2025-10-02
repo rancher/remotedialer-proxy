@@ -37,24 +37,14 @@ jobs:
       - uses: rancher-eio/read-vault-secrets@main
         with:
           secrets: |
-            secret/data/github/repo/${{ github.repository }}/github/app-credentials appId | APP_ID ;
-            secret/data/github/repo/${{ github.repository }}/github/app-credentials privateKey | PRIVATE_KEY
-
-      # Fetch github token just for the charts repository
-      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
-        id: app-token
-        with:
-          app-id: ${{ env.APP_ID }}
-          private-key: ${{ env.PRIVATE_KEY }}
-          repositories: |
-            charts
+            github/token/rancher--charts--pull_requests--write token | GH_TOKEN
 
       - name: Checkout charts repository
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           repository: ${{ github.repository_owner }}/charts
           ref: "${{ env.CHARTS_REF }}"
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ env.GH_TOKEN }}
           path: charts
           # Allow making git push request later on
           persist-credentials: true
@@ -66,8 +56,8 @@ jobs:
           git config --global user.name "$APP_USER"
           git config --global user.email "${user_id}+${APP_USER}@users.noreply.github.com"
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          APP_USER: "${{ steps.app-token.outputs.app-slug }}[bot]"
+          GH_TOKEN: ${{ GH_TOKEN }}
+          APP_USER: "rancher-pr-and-push-remotedialer-proxy [bot]"
 
       - name: Install dependencies
         run: sudo snap install yq --channel=v4/stable
@@ -82,7 +72,7 @@ jobs:
 
       - name: Push and create pull request
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ GH_TOKEN }}
         run: |
           cd charts
           git push origin "$BRANCH"

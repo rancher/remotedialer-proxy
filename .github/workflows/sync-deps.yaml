@@ -31,14 +31,14 @@ jobs:
           secrets: |
             github/token/rancher--rancher--pull_requests--write token | GH_TOKEN
 
-      - name : Checkout remotedialer-proxy repository
+      - name: Checkout remotedialer-proxy repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           ref: "${{ env.RDPROXY_REF }}"
           path: remotedialer-proxy
           token: ${{ env.GH_TOKEN }}
 
-      - name : Checkout rancher repository
+      - name: Checkout rancher repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           repository: "${{ github.event.inputs.rancher_repository }}"
@@ -58,23 +58,26 @@ jobs:
           APP_USER: "remotedialer-proxy-sync[bot]"
 
       - name: Run sync-deps script
+        id: sync
         run: |
           cd remotedialer-proxy
-          BRANCH="sync-deps-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          echo "BRANCH=${BRANCH}" >> $GITHUB_ENV
-          git checkout -b "$BRANCH"
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
           ./.github/workflows/scripts/sync-deps.sh ../rancher "changes.md"
-          if [ -f changes.md ]; then
+          # Check if go.mod or go.sum have changed.
+          if ! git diff --quiet go.mod go.sum; then
+            BRANCH="sync-deps-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            echo "BRANCH=${BRANCH}" >> $GITHUB_ENV
+            git checkout -b "$BRANCH"
             git add go.mod go.sum
-            git commit -m "Sync dependencies"
+            git commit -m "Sync dependencies with rancher/rancher"
             git push origin "$BRANCH"
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Create PR
-        # Only create the PR if changes were detected
-        if: ${{ hashFiles('rdproxy/changes.md') != '' }}
+        if: steps.sync.outputs.changes_detected == 'true'
         run: |
-          cd remotedialer-prxy
+          cd remotedialer-proxy
           changes=$(cat changes.md)
           body=$(cat <<EOF
           # Sync with Rancher
@@ -85,11 +88,11 @@ jobs:
           EOF
           )
           gh pr create \
-            --title "[$RDP_REF] Sync remotedialer dependencies" \
+            --title "[$RDPROXY_REF] Sync remotedialer dependencies" \
             --body "$body" \
             --reviewer "$GITHUB_TRIGGERING_ACTOR" \
             --repo "${{ github.repository }}" \
             --head "${{ github.repository_owner }}:$BRANCH" \
-            --base "$RDP_REF"
+            --base "$RDPROXY_REF"
         env:
-          GH_TOKEN: ${{ env.GHTOKEN }}
+          GH_TOKEN: ${{ env.GH_TOKEN }}

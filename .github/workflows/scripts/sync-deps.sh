@@ -10,9 +10,7 @@ CHANGES_FILE=${2:-/dev/null}
 
 DEPS_TO_SYNC="
   github.com/rancher/remotedialer
-  github.com/rancher/lasso
-  github.com/rancher/wrangler
-  github.com/rancher/wrangler/v2
+  github.com/rancher/dynamiclistener
   github.com/rancher/wrangler/v3
 "
 
@@ -50,6 +48,13 @@ for dep in $DEPS_TO_SYNC; do
   rancher_version=$(echo "$rancher_version" | head -n 1 | cut -d' ' -f1 | cut -d@ -f2)
   rdp_version=$(echo "$rdp_version" | head -n 1 | cut -d' ' -f1 | cut -d@ -f2)
   if [ "$rancher_version" = "$rdp_version" ]; then
+    continue
+  fi
+
+  # If the rancher version is not newer, we should not update.
+  latest_version=$(printf '%s\n%s' "$rancher_version" "$rdp_version" | sort -V | tail -n1)
+  if [ "$latest_version" != "$rancher_version" ]; then
+    echo "Skipping update for $dep because rancher version ($rancher_version) is not newer than rdp version ($rdp_version)"
     continue
   fi
 

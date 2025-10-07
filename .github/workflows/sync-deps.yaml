@@ -1,0 +1,98 @@
+name: Sync dependencies
+
+on:
+  workflow_dispatch:
+    inputs:
+      rancher_ref:
+        description: "Version of rancher/rancher to compare"
+        required: true
+        default: "main"
+      rancher_repository:
+        description: "Repository for rancher/rancher"
+        required: true
+        default: "rancher/rancher"
+
+env:
+  RANCHER_REF: "${{ github.event.inputs.rancher_ref }}"
+  RDPROXY_REF: "${{ github.ref_name }}"
+
+permissions:
+  contents: read
+  # Needed to access to vault
+  id-token: write
+
+jobs:
+  sync:
+    name: Sync dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: rancher-eio/read-vault-secrets@main
+        with:
+          secrets: |
+            github/token/rancher--rancher--pull_requests--write token | GH_TOKEN
+
+      - name: Checkout remotedialer-proxy repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: "${{ env.RDPROXY_REF }}"
+          path: remotedialer-proxy
+          token: ${{ env.GH_TOKEN }}
+
+      - name: Checkout rancher repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          repository: "${{ github.event.inputs.rancher_repository }}"
+          ref: "${{ env.RANCHER_REF }}"
+          path: rancher
+
+      - name: Install dependencies
+        run: sudo snap install yq --channel=v4/stable
+
+      - name: Configure the committer
+        run: |
+          cd remotedialer-proxy
+          git config --global user.name "$APP_USER"
+          git config --global user.email "${APP_USER}@users.noreply.github.com"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_USER: "remotedialer-proxy-sync[bot]"
+
+      - name: Run sync-deps script
+        id: sync
+        run: |
+          cd remotedialer-proxy
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
+          ./.github/workflows/scripts/sync-deps.sh ../rancher "changes.md"
+          # Check if go.mod or go.sum have changed.
+          if ! git diff --quiet go.mod go.sum; then
+            BRANCH="sync-deps-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            echo "BRANCH=${BRANCH}" >> $GITHUB_ENV
+            git checkout -b "$BRANCH"
+            git add go.mod go.sum
+            git commit -m "Sync dependencies with rancher/rancher"
+            git push origin "$BRANCH"
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create PR
+        if: steps.sync.outputs.changes_detected == 'true'
+        run: |
+          cd remotedialer-proxy
+          changes=$(cat changes.md)
+          body=$(cat <<EOF
+          # Sync with Rancher
+
+          $changes
+
+          The workflow was triggered by $GITHUB_TRIGGERING_ACTOR.
+          EOF
+          )
+          gh pr create \
+            --title "[$RDPROXY_REF] Sync remotedialer dependencies" \
+            --body "$body" \
+            --reviewer "$GITHUB_TRIGGERING_ACTOR" \
+            --repo "${{ github.repository }}" \
+            --head "${{ github.repository_owner }}:$BRANCH" \
+            --base "$RDPROXY_REF"
+        env:
+          GH_TOKEN: ${{ env.GH_TOKEN }}

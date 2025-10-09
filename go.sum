@@ -84,12 +84,12 @@ github.com/prometheus/procfs v0.17.0 h1:FuLQ+05u4ZI+SS/w9+BWEM2TXiHKsUQ9TADiRH7D
 github.com/prometheus/procfs v0.17.0/go.mod h1:oPQLaDAMRbA+u8H5Pbfq+dl3VDAvHxMUOVhe0wYB2zw=
 github.com/rancher/dynamiclistener v0.7.2-rc.3 h1:geymeVB2kxxT6cGWl6p4emjW6HxLq/O1vkBLpSJHung=
 github.com/rancher/dynamiclistener v0.7.2-rc.3/go.mod h1:maKY4eN3hrEm9hi65ltyGIpCk/H5uTezEvLmqOXHN4U=
-github.com/rancher/lasso v0.2.5-rc.1 h1:E88eG3FDYGmccJjGDjv7HrknSaYQz4WNGgJ/gGjmGFc=
-github.com/rancher/lasso v0.2.5-rc.1/go.mod h1:71rWfv+KkdSmSxZ9Ly5QYhxAu0nEUcaq9N2ByjcHqAM=
+github.com/rancher/lasso v0.2.5 h1:K++lWDDdfeN98Ixc1kCfUq0/q6tLjoHN++Np6QntXw0=
+github.com/rancher/lasso v0.2.5/go.mod h1:71rWfv+KkdSmSxZ9Ly5QYhxAu0nEUcaq9N2ByjcHqAM=
 github.com/rancher/remotedialer v0.6.0-rc.1 h1:HMwcJjjT4irqM+d++jPcpjoNfhPCaxoHIyPzdpghZhE=
 github.com/rancher/remotedialer v0.6.0-rc.1/go.mod h1:CW6Q8F8IESN05/yl48OSwhVi54nDwVQQriV16zAiGkg=
-github.com/rancher/wrangler/v3 v3.3.0-rc.2 h1:o/jNO0uQmcAUTxIwu7q3VBTkS82XDh7gb0Ofv0DpVoQ=
-github.com/rancher/wrangler/v3 v3.3.0-rc.2/go.mod h1:0RpxDgbQ4Lgzfuy7JPNk5jZfTKJQoCN6qUhlrDgNY9E=
+github.com/rancher/wrangler/v3 v3.3.1 h1:YFqRfhxjuLNudUrvWrn+64wUPZ8pnn2KWbTsha75JLg=
+github.com/rancher/wrangler/v3 v3.3.1/go.mod h1:0D4kZDaOUkP5W2Zfww/75tQwF9w7kaZgzpZG+4XQDAI=
 github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR38lUII=
 github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWNMNyH2VO9fmH0o=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=

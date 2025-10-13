@@ -30,7 +30,7 @@ jobs:
       # Required for vault
       id-token: write
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         with:
           ref: "${{ env.REMOTEDIALER_REF }}"
           path: remotedialer-proxy
@@ -42,7 +42,7 @@ jobs:
             github/token/rancher--charts--pull_requests--write token | GH_TOKEN
       
       - name: Checkout charts repository
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         with:
           repository: ${{ env.CHARTS_REPO }}
           ref: "${{ env.CHARTS_REF }}"

@@ -16,8 +16,12 @@
       ]
     },
     {
-      "matchPackageNames": ["golang"],
-      "updateTypes": ["patch"]
+      "matchPackageNames": [
+        "golang"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ]
     }
   ]
 }

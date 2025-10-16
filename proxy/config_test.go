@@ -3,6 +3,9 @@ package proxy
 import (
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigFromEnvironment(t *testing.T) {
@@ -135,43 +138,19 @@ func TestConfigFromEnvironment(t *testing.T) {
 			config, err := ConfigFromEnvironment()
 
 			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected an error but got none")
-				}
+				require.Error(t, err, "Expected an error but got none")
 			} else {
-				if err != nil {
-					t.Errorf("Did not expect an error but got: %v", err)
-				}
-				if config == nil {
-					t.Fatalf("Expected config but got nil")
-				}
-				if config.TLSName != tt.expected.TLSName {
-					t.Errorf("TLSName mismatch: got %s, want %s", config.TLSName, tt.expected.TLSName)
-				}
-				if config.CAName != tt.expected.CAName {
-					t.Errorf("CAName mismatch: got %s, want %s", config.CAName, tt.expected.CAName)
-				}
-				if config.CertCANamespace != tt.expected.CertCANamespace {
-					t.Errorf("CertCANamespace mismatch: got %s, want %s", config.CertCANamespace, tt.expected.CertCANamespace)
-				}
-				if config.CertCAName != tt.expected.CertCAName {
-					t.Errorf("CertCAName mismatch: got %s, want %s", config.CertCAName, tt.expected.CertCAName)
-				}
-				if config.Secret != tt.expected.Secret {
-					t.Errorf("Secret mismatch: got %s, want %s", config.Secret, tt.expected.Secret)
-				}
-				if config.ProxyPort != tt.expected.ProxyPort {
-					t.Errorf("ProxyPort mismatch: got %d, want %d", config.ProxyPort, tt.expected.ProxyPort)
-				}
-				if config.PeerPort != tt.expected.PeerPort {
-					t.Errorf("PeerPort mismatch: got %d, want %d", config.PeerPort, tt.expected.PeerPort)
-				}
-				if config.HTTPSPort != tt.expected.HTTPSPort {
-					t.Errorf("HTTPSPort mismatch: got %d, want %d", config.HTTPSPort, tt.expected.HTTPSPort)
-				}
-				if config.Debug != tt.expected.Debug {
-					t.Errorf("Debug mismatch: got %t, want %t", config.Debug, tt.expected.Debug)
-				}
+				require.NoError(t, err, "Did not expect an error but got: %v", err)
+				require.NotNil(t, config, "Expected config but got nil")
+				assert.Equal(t, tt.expected.TLSName, config.TLSName, "TLSName mismatch")
+				assert.Equal(t, tt.expected.CAName, config.CAName, "CAName mismatch")
+				assert.Equal(t, tt.expected.CertCANamespace, config.CertCANamespace, "CertCANamespace mismatch")
+				assert.Equal(t, tt.expected.CertCAName, config.CertCAName, "CertCAName mismatch")
+				assert.Equal(t, tt.expected.Secret, config.Secret, "Secret mismatch")
+				assert.Equal(t, tt.expected.ProxyPort, config.ProxyPort, "ProxyPort mismatch")
+				assert.Equal(t, tt.expected.PeerPort, config.PeerPort, "PeerPort mismatch")
+				assert.Equal(t, tt.expected.HTTPSPort, config.HTTPSPort, "HTTPSPort mismatch")
+				assert.Equal(t, tt.expected.Debug, config.Debug, "Debug mismatch")
 			}
 		})
 	}

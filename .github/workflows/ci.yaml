@@ -1,25 +1,128 @@
-name: Run Unit Tests
+name: CI
 
 on:
-    pull_request:
-        paths-ignore:
-        - '.gitignore'
-        - 'CODEOWNERS'
-        - 'LICENSE'
-
+  pull_request:
+    paths-ignore:
+      - '.gitignore'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - '.gitignore'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+  workflow_dispatch:
 
 jobs:
   test:
-    name: Test
+    name: Unit Tests
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
 
       - name: Run tests
         run: go test -v -cover ./...
+
+  build:
+    name: Build Docker Images (amd64 & arm64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build amd64 images
+        run: |
+          docker buildx build --platform linux/amd64 -t remotedialer-proxy:test-amd64 -f Dockerfile.proxy --load .
+          docker save remotedialer-proxy:test-amd64 -o remotedialer-proxy-amd64.tar
+          docker buildx build --platform linux/amd64 -t remotedialer-proxy-client:test-amd64 -f Dockerfile.proxyclient --load .
+          docker save remotedialer-proxy-client:test-amd64 -o remotedialer-proxy-client-amd64.tar
+
+      - name: Build arm64 images
+        run: |
+          docker buildx build --platform linux/arm64 -t remotedialer-proxy:test-arm64 -f Dockerfile.proxy --load .
+          docker save remotedialer-proxy:test-arm64 -o remotedialer-proxy-arm64.tar
+          docker buildx build --platform linux/arm64 -t remotedialer-proxy-client:test-arm64 -f Dockerfile.proxyclient --load .
+          docker save remotedialer-proxy-client:test-arm64 -o remotedialer-proxy-client-arm64.tar
+
+      - name: Upload amd64 image artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: remotedialer-proxy-image-amd64
+          path: remotedialer-proxy-amd64.tar
+      - name: Upload amd64 client image artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: remotedialer-proxy-client-image-amd64
+          path: remotedialer-proxy-client-amd64.tar
+
+      - name: Upload arm64 image artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: remotedialer-proxy-image-arm64
+          path: remotedialer-proxy-arm64.tar
+      - name: Upload arm64 client image artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: remotedialer-proxy-client-image-arm64
+          path: remotedialer-proxy-client-arm64.tar
+
+  integration:
+    name: Integration Test
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        archBox:
+          - { arch: amd64, vmArch: x64 }
+          - { arch: arm64, vmArch: arm64 }
+    runs-on: ${{ matrix.archBox.vmArch }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Download image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: remotedialer-proxy-image-${{ matrix.archBox.arch }}
+      - name: Download client image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: remotedialer-proxy-client-image-${{ matrix.archBox.arch }}
+
+      - name: Load Docker images
+        run: |
+          docker load -i remotedialer-proxy-${{ matrix.archBox.arch }}.tar
+          docker load -i remotedialer-proxy-client-${{ matrix.archBox.arch }}.tar
+
+      - name: Install k3d
+        run: .github/workflows/scripts/install-k3d.sh
+        env:
+          K3D_VERSION: v5.6.0
+
+      - name: Setup k3d cluster
+        run: .github/workflows/scripts/setup-cluster.sh
+        env:
+          CLUSTER_NAME: rdproxy-ci
+          K3S_VERSION: v1.30.1-k3s1
+          ARCH: "${{ matrix.archBox.arch }}"
+
+      - name: Run integration test
+        run: .github/workflows/scripts/integration-test-ci.sh
+        env:
+          CLUSTER_NAME: rdproxy-ci
+          NAMESPACE: rdproxy-test
+          IMAGE_NAME: remotedialer-proxy:test-${{ matrix.archBox.arch }}
+          CLIENT_IMAGE_NAME: remotedialer-proxy-client:test-${{ matrix.archBox.arch }}
+          CHART_DIR: charts/remotedialer-proxy

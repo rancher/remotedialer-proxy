@@ -1,22 +1,21 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/rancher/remotedialer-proxy/forward"
 	"github.com/rancher/remotedialer-proxy/proxyclient"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
+	"k8s.io/client-go/rest"
 )
 
 var (
@@ -25,7 +24,8 @@ var (
 	certSecretName        = "api-extension-ca-name"
 	certServerName        = "api-extension-tls-name"
 	connectSecret         = "api-extension"
-	ports                 = []string{"5555:5555"}
+	connectUrl            = ""
+	ports                 = []string{"8443:8443"}
 	fakeImperativeAPIAddr = "0.0.0.0:6666"
 )
 
@@ -45,6 +45,9 @@ func init() {
 	if val, ok := os.LookupEnv("CONNECT_SECRET"); ok {
 		connectSecret = val
 	}
+	if val, ok := os.LookupEnv("CONNECT_URL"); ok {
+		connectUrl = val
+	}
 	if val, ok := os.LookupEnv("PORTS"); ok {
 		ports = strings.Split(val, ",")
 	}
@@ -53,51 +56,37 @@ func init() {
 	}
 }
 
-func handleConnection(ctx context.Context, conn net.Conn) {
+func handleConnection(ctx context.Context, connFromRDProxy net.Conn) {
+	defer connFromRDProxy.Close()
+
+	// Dial the echo-server
+	echoServerAddr := fmt.Sprintf("echo-server.%s.svc:12345", namespace)
+	connToEchoServer, err := net.Dial("tcp", echoServerAddr)
+	if err != nil {
+		logrus.Errorf("handleConnection: error dialing echo-server %s: %v", echoServerAddr, err)
+		return
+	}
+	defer connToEchoServer.Close()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// Pipe data bidirectionally
 	go func() {
-		<-ctx.Done()
-		fmt.Println("handleConnection: context canceled; closing connection.")
-		_ = conn.Close()
+		defer wg.Done()
+		// Copy from RDProxy to Echo Server
+		io.Copy(connToEchoServer, connFromRDProxy)
 	}()
 
-	defer fmt.Println("handleConnection: exiting for", conn.RemoteAddr())
-	defer conn.Close()
-
-	buffer := make([]byte, 1024)
-	for {
-		n, err := conn.Read(buffer)
-		if err != nil {
-			fmt.Println("Connection closed or error occurred:", err)
-			return
-		}
-		fmt.Println("Received from Client", string(buffer[:n]))
-	}
-}
-
-func handleKeyboardInput(ctx context.Context, conn net.Conn) {
 	go func() {
-		<-ctx.Done()
-		fmt.Println("handleKeyboardInput: context canceled; closing connection.")
-		_ = conn.Close()
+		defer wg.Done()
+		// Copy from Echo Server to RDProxy
+		io.Copy(connFromRDProxy, connToEchoServer)
 	}()
 
-	defer fmt.Println("handleKeyboardInput: exiting for", conn.RemoteAddr())
-	defer conn.Close()
-
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		input, err := reader.ReadByte()
-		if err != nil {
-			fmt.Println("Error reading keyboard input:", err)
-			return
-		}
-
-		_, err = conn.Write([]byte{input})
-		if err != nil {
-			fmt.Println("Error sending data to client:", err)
-			return
-		}
-	}
+	// Wait for both copy operations to complete
+	wg.Wait()
+	logrus.Info("handleConnection: finished piping data")
 }
 
 func fakeImperativeAPI(ctx context.Context) error {
@@ -105,11 +94,10 @@ func fakeImperativeAPI(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("Error starting server on %s: %w", fakeImperativeAPIAddr, err)
 	}
-	fmt.Printf("Server listening on %s...\n", fakeImperativeAPIAddr)
+	logrus.Infof("Server listening on %s...", fakeImperativeAPIAddr)
 
 	go func() {
 		<-ctx.Done()
-		fmt.Println("fakeImperativeAPI: context canceled; closing listener.")
 		_ = ln.Close()
 	}()
 
@@ -118,17 +106,12 @@ func fakeImperativeAPI(ctx context.Context) error {
 		if acceptErr != nil {
 			select {
 			case <-ctx.Done():
-				fmt.Println("fakeImperativeAPI: accept loop stopping; context is done.")
 				return nil
 			default:
 				return fmt.Errorf("fakeImperativeAPI: error accepting connection: %w", acceptErr)
 			}
 		}
-
-		fmt.Println("Connection established with client:", conn.RemoteAddr())
-
 		go handleConnection(ctx, conn)
-		go handleKeyboardInput(ctx, conn)
 	}
 }
 
@@ -146,14 +129,16 @@ func main() {
 		}
 	}()
 
-	home := homedir.HomeDir()
-	kubeConfigPath := filepath.Join(home, ".kube", "config")
-	cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err.Error())
 	}
 
-	coreFactory, err := core.NewFactoryFromConfigWithOptions(cfg, nil)
+	options := &core.FactoryOptions{
+		Namespace: namespace,
+	}
+
+	coreFactory, err := core.NewFactoryFromConfigWithOptions(cfg, options)
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -166,6 +151,11 @@ func main() {
 		logrus.Fatal(err)
 	}
 
+	opts := []proxyclient.ProxyClientOpt{}
+	if connectUrl != "" {
+		opts = append(opts, proxyclient.WithServerURL(connectUrl))
+	}
+
 	proxyClient, err := proxyclient.New(
 		ctx,
 		connectSecret,
@@ -174,6 +164,7 @@ func main() {
 		certServerName,
 		secretContoller,
 		portForwarder,
+		opts...,
 	)
 	if err != nil {
 		logrus.Fatal(err)

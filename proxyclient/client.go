@@ -19,7 +19,7 @@ import (
 
 const (
 	defaultServerAddr        = "wss://127.0.0.1"
-	defaultServerPort        = 5555
+	defaultServerPort        = 8443
 	defaultServerPath        = "/connect"
 	retryTimeout             = 1 * time.Second
 	certificateWatchInterval = 10 * time.Second

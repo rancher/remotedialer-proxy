@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rdproxy
+  namespace: rdproxy-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rdproxy
+  template:
+    metadata:
+      labels:
+        app: rdproxy
+    spec:
+      containers:
+      - name: rdproxy
+        image: IMAGE_PLACEHOLDER
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PROXY_PORT
+          value: "6666"
+        - name: HTTPS_PORT
+          value: "8443"
+        - name: TLS_NAME
+          value: "rdproxy.rdproxy-test.svc"
+        - name: CA_NAME
+          value: "dummy"
+        - name: CERT_CA_NAMESPACE
+          value: "rdproxy-test"
+        - name: CERT_CA_NAME
+          value: "dummy"
+        - name: SECRET
+          value: "dummy"
+        - name: PEER_PORT
+          value: "12345"
+        ports:
+        - containerPort: 8443
+          name: http
+        - containerPort: 6666
+          name: proxy

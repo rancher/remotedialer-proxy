@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -62,32 +63,30 @@ func runProxyListener(ctx context.Context, cfg *Config, server *remotedialer.Ser
 						return
 					}
 
-					go pipe(conn, clientConn)
-					go pipe(clientConn, conn)
+					var wg sync.WaitGroup
+					wg.Add(2)
+
+					// Pipe from proxy-tester (conn) to proxy-client (clientConn)
+					go func() {
+						defer wg.Done()
+						io.Copy(clientConn, conn)
+					}()
+
+					// Pipe from proxy-client (clientConn) to proxy-tester (conn)
+					go func() {
+						defer wg.Done()
+						io.Copy(conn, clientConn)
+					}()
+
+					// Wait for both pipes to finish, then close the connections
+					wg.Wait()
+					_ = conn.Close()
+					_ = clientConn.Close()
 					break
 				}
 			}
 		}()
 	}
-}
-
-func pipe(a, b net.Conn) {
-	defer func(a net.Conn) {
-		if err := a.Close(); err != nil {
-			logrus.Errorf("proxy TCP connection close failed: %v", err)
-		}
-	}(a)
-	defer func(b net.Conn) {
-		if err := b.Close(); err != nil {
-			logrus.Errorf("proxy TCP connection close failed: %v", err)
-		}
-	}(b)
-	n, err := io.Copy(a, b)
-	if err != nil {
-		logrus.Errorf("proxy copy failed: %v", err)
-		return
-	}
-	logrus.Debugf("proxy copied %d bytes to %v from %v", n, a.LocalAddr(), b.LocalAddr())
 }
 
 func Start(cfg *Config, restConfig *rest.Config) error {

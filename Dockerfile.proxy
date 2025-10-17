@@ -1,6 +1,9 @@
 FROM golang:1.24 AS builder
 WORKDIR /app
 
+ARG TARGETARCH
+ENV GOARCH=${TARGETARCH}
+
 COPY . .
 RUN go mod download
 

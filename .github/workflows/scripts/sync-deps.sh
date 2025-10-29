@@ -1,6 +1,4 @@
 #!/bin/sh
-#
-#
 
 set -e
 
@@ -34,14 +32,14 @@ update_dep() {
 }
 
 rancher_deps=$(cd "$RANCHER_REPO_DIR" && go mod graph)
-rdp_deps=$(go mod graph)
+remotedialerproxy_deps=$(go mod graph)
 
 for dep in $DEPS_TO_SYNC; do
   if ! rancher_version=$(echo "$rancher_deps" | grep "^$dep@\w*\S"); then
     continue
   fi
 
-  if ! rdp_version=$(echo "$rdp_deps" | grep "^$dep@\w*\S"); then
+  if ! rdp_version=$(echo "$remotedialerproxy_deps" | grep "^$dep@\w*\S"); then
     continue
   fi
 
@@ -52,7 +50,7 @@ for dep in $DEPS_TO_SYNC; do
   fi
 
   # If the rancher version is not newer, we should not update.
-  latest_version=$(printf '%s\n%s' "$rancher_version" "$rdp_version" | sort -V | tail -n1)
+  latest_version=$(printf '%s\n%s' "$rancher_version" "$rdp_version" | sort --version-sort | tail -n1)
   if [ "$latest_version" != "$rancher_version" ]; then
     echo "Skipping update for $dep because rancher version ($rancher_version) is not newer than rdp version ($rdp_version)"
     continue

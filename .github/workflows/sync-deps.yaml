@@ -17,7 +17,7 @@ env:
   RDPROXY_REF: "${{ github.ref_name }}"
 
 permissions:
-  contents: read
+  contents: write
   # Needed to access to vault
   id-token: write
 
@@ -54,7 +54,6 @@ jobs:
           git config --global user.name "$APP_USER"
           git config --global user.email "${APP_USER}@users.noreply.github.com"
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           APP_USER: "remotedialer-proxy-sync[bot]"
 
       - name: Run sync-deps script

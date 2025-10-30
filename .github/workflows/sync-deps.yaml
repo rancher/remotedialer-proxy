@@ -20,6 +20,7 @@ permissions:
   contents: write
   # Needed to access to vault
   id-token: write
+  pull-requests: write
 
 jobs:
   sync:
@@ -58,6 +59,8 @@ jobs:
 
       - name: Run sync-deps script
         id: sync
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           cd remotedialer-proxy
           echo "changes_detected=false" >> $GITHUB_OUTPUT
@@ -75,6 +78,8 @@ jobs:
 
       - name: Create PR
         if: steps.sync.outputs.changes_detected == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd remotedialer-proxy
           changes=$(cat changes.md)
@@ -93,5 +98,4 @@ jobs:
             --repo "${{ github.repository }}" \
             --head "${{ github.repository_owner }}:$BRANCH" \
             --base "$RDPROXY_REF"
-        env:
-          GH_TOKEN: ${{ env.GH_TOKEN }}
+

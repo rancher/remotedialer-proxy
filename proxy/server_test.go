@@ -76,7 +76,7 @@ func TestRunProxyListener(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	assert.Greater(t, len(remoteDialerServer.ListClients()), 0, "remotedialer client did not connect in time")
+	require.Greater(t, len(remoteDialerServer.ListClients()), 0, "remotedialer client did not connect in time")
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "failed to find a free port")

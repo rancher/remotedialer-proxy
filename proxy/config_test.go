@@ -9,21 +9,10 @@ import (
 )
 
 func TestConfigFromEnvironment(t *testing.T) {
-	// Save original environment variables and restore them after the test
-	originalEnv := make(map[string]string)
 	keysToSave := []string{
 		"TLS_NAME", "CA_NAME", "CERT_CA_NAMESPACE", "CERT_CA_NAME",
 		"SECRET", "PROXY_PORT", "PEER_PORT", "HTTPS_PORT", "DEBUG",
 	}
-	for _, key := range keysToSave {
-		originalEnv[key] = os.Getenv(key)
-		_ = os.Unsetenv(key) // Ensure a clean slate for each test case
-	}
-	defer func() {
-		for _, key := range keysToSave {
-			_ = os.Setenv(key, originalEnv[key])
-		}
-	}()
 
 	tests := []struct {
 		name        string

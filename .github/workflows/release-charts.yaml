@@ -7,11 +7,11 @@ on:
         required: true
         default: "dev-v2.13"
       prev_remotedialer:
-        description: "Previous remotedialer version (eg: v0.2.0-rc.1)"
+        description: "Previous remotedialer version (eg: v0.6.0-rc.1)"
         required: true
         default: ""
       new_remotedialer:
-        description: "New remotedialer-proxy version (eg: v0.2.0-rc.2)"
+        description: "New remotedialer-proxy version (eg: v0.6.0-rc.2)"
         required: true
         default: ""
 

@@ -2,12 +2,13 @@ IMAGE ?= remotedialer-proxy
 DOCKERFILE ?= Dockerfile.proxy
 CONTEXT ?= .
 TAG ?= latest
+REPO ?= rancher
 
 .PHONY: build push-image
 build:
-	@echo "Building image $(IMAGE):$(TAG) for local use"
+	@echo "Building image $(REPO)/$(IMAGE):$(TAG) for local use"
 	docker buildx build \
-		--tag $(IMAGE):$(TAG) \
+		--tag $(REPO)/$(IMAGE):$(TAG) \
 		--file $(DOCKERFILE) \
 		--load \
 		$(CONTEXT)

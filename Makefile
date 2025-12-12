@@ -3,13 +3,15 @@ DOCKERFILE ?= Dockerfile.proxy
 CONTEXT ?= .
 TAG ?= latest
 REPO ?= rancher
+TARGET_PLATFORMS ?= linux/amd64
 
 .PHONY: build push-image
 build:
-	@echo "Building image $(REPO)/$(IMAGE):$(TAG) for local use"
+	@echo "Building image $(REPO)/$(IMAGE):$(TAG) for platforms $(TARGET_PLATFORMS)"
 	docker buildx build \
 		--tag $(REPO)/$(IMAGE):$(TAG) \
 		--file $(DOCKERFILE) \
+		--platform $(TARGET_PLATFORMS) \
 		--load \
 		$(CONTEXT)
 

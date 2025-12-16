@@ -47,10 +47,14 @@ jobs:
         run: |
           cd dist/artifacts
 
-          if [[ "${{ github.ref_name }}" == *-rc* ]]; then
-            gh --repo "${{ github.repository }}" release create ${{ github.ref_name }} --verify-tag --generate-notes --prerelease remotedialer-proxy*.tgz
+          if gh --repo "${{ github.repository }}" release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} already exists."
           else
-            gh --repo "${{ github.repository }}" release create ${{ github.ref_name }} --verify-tag --generate-notes remotedialer-proxy*.tgz
+            if [[ "${{ github.ref_name }}" == *-rc* ]]; then
+              gh --repo "${{ github.repository }}" release create ${{ github.ref_name }} --verify-tag --generate-notes --prerelease remotedialer-proxy*.tgz
+            else
+              gh --repo "${{ github.repository }}" release create ${{ github.ref_name }} --verify-tag --generate-notes remotedialer-proxy*.tgz
+            fi
           fi
 
   publish:
@@ -85,6 +89,6 @@ jobs:
 
           push-to-prime: true
           prime-repo: rancher
-          prime-registry: ${{ vars.PRIME_STG_REGISTRY }}
+          prime-registry: ${{ env.PRIME_STG_REGISTRY }}
           prime-username: ${{ env.PRIME_STG_REGISTRY_USERNAME }}
           prime-password: ${{ env.PRIME_STG_REGISTRY_PASSWORD }}

@@ -5,8 +5,8 @@ go 1.24.0
 toolchain go1.24.6
 
 require (
+	github.com/coder/websocket v1.8.14
 	github.com/gorilla/mux v1.8.1
-	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/rancher/dynamiclistener v0.7.3-rc.1
 	github.com/rancher/remotedialer v0.6.0-rc.1
 	github.com/rancher/wrangler/v3 v3.3.1
@@ -32,6 +32,7 @@ require (
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -71,3 +72,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
+
+replace github.com/rancher/remotedialer => github.com/commitgo/remotedialer v0.0.0-20251206042109-bfe21d19229c

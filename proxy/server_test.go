@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/rancher/remotedialer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,7 +61,7 @@ func TestRunProxyListener(t *testing.T) {
 		// ClientConnect will exit when the context is cancelled or the connection is otherwise lost.
 		headers := http.Header{}
 		headers.Set("X-API-Tunnel-Secret", "test-secret")
-		err := remotedialer.ClientConnect(ctx, wsURL, headers, websocket.DefaultDialer, connectAuthorizer, onConnect)
+		err := remotedialer.ClientConnect(ctx, wsURL, headers, nil, connectAuthorizer, onConnect)
 		// No error on clean context cancellation
 		if ctx.Err() == nil && err != nil {
 			t.Errorf("remotedialer client connect error: %v", err)

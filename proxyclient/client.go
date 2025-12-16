@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/rancher/remotedialer"
 	v1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 
@@ -38,8 +38,8 @@ type ProxyClient struct {
 	serverUrl           string
 	serverConnectSecret string
 
-	dialer    *websocket.Dialer
-	dialerMtx sync.Mutex
+	dialOpts    *websocket.DialOptions
+	dialOptsMtx sync.Mutex
 
 	secretController v1.SecretController
 	namespace        string
@@ -103,14 +103,18 @@ func (c *ProxyClient) setUpBuildDialerCallback(ctx context.Context, certSecretNa
 				return nil, err
 			}
 
-			c.dialerMtx.Lock()
-			c.dialer = &websocket.Dialer{
-				TLSClientConfig: &tls.Config{
-					RootCAs:    rootCAs,
-					ServerName: c.certServerName,
+			c.dialOptsMtx.Lock()
+			c.dialOpts = &websocket.DialOptions{
+				HTTPClient: &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							RootCAs:    rootCAs,
+							ServerName: c.certServerName,
+						},
+					},
 				},
 			}
-			c.dialerMtx.Unlock()
+			c.dialOptsMtx.Unlock()
 			logrus.Infof("RDPClient: certificate updated successfully")
 		}
 
@@ -142,18 +146,18 @@ func (c *ProxyClient) Run(ctx context.Context) {
 				return
 
 			default:
-				logrus.Info("RDPClient: Checking if dialer is built...")
+				logrus.Info("RDPClient: Checking if dialOpts is built...")
 
-				c.dialerMtx.Lock()
-				dialer := c.dialer
-				c.dialerMtx.Unlock()
+				c.dialOptsMtx.Lock()
+				dialOpts := c.dialOpts
+				c.dialOptsMtx.Unlock()
 
-				if dialer != nil {
-					logrus.Info("RDPClient: Dialer is built. Ready to start.")
+				if dialOpts != nil {
+					logrus.Info("RDPClient: DialOpts is built. Ready to start.")
 					break LookForDialer
 				}
 
-				logrus.Infof("RDPClient: Dialer is not built yet, waiting %d secs to re-check.", getSecretRetryTimeout/time.Second)
+				logrus.Infof("RDPClient: DialOpts is not built yet, waiting %d secs to re-check.", getSecretRetryTimeout/time.Second)
 				time.Sleep(getSecretRetryTimeout)
 			}
 		}
@@ -185,11 +189,11 @@ func (c *ProxyClient) Run(ctx context.Context) {
 					return nil
 				}
 
-				c.dialerMtx.Lock()
-				dialer := c.dialer
-				c.dialerMtx.Unlock()
+				c.dialOptsMtx.Lock()
+				dialOpts := c.dialOpts
+				c.dialOptsMtx.Unlock()
 
-				if err := remotedialer.ClientConnect(ctx, c.serverUrl, headers, dialer, onConnectAuth, onConnect); err != nil {
+				if err := remotedialer.ClientConnect(ctx, c.serverUrl, headers, dialOpts, onConnectAuth, onConnect); err != nil {
 					logrus.Errorf("RDPClient: remotedialer.ClientConnect error: %s", err.Error())
 					c.forwarder.Stop()
 					time.Sleep(retryTimeout)
@@ -218,8 +222,8 @@ func WithOnConnectCallback(onConnect func(ctx context.Context, session *remotedi
 	}
 }
 
-func WithCustomDialer(dialer *websocket.Dialer) ProxyClientOpt {
+func WithCustomDialOptions(dialOpts *websocket.DialOptions) ProxyClientOpt {
 	return func(pc *ProxyClient) {
-		pc.dialer = dialer
+		pc.dialOpts = dialOpts
 	}
 }

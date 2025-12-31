@@ -4,6 +4,12 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
+github.com/bhartigautam156/dynamiclistener v0.0.0-20251230121719-181be4aee6f5 h1:7qzk9y71sDShBVfjO+/Gd25us7Oex5xPQUVJL3RlqnY=
+github.com/bhartigautam156/dynamiclistener v0.0.0-20251230121719-181be4aee6f5/go.mod h1:DtG3ENYmi+AJthRZ0KLQB4yWPIppwy/Lsu7jsUzfCIw=
+github.com/bhartigautam156/lasso v0.0.0-20251229100131-0f72619beec0 h1:tYpoQsdiF0XfSI3rHByaL32EcA6KRZ0R9Heguj5jRBU=
+github.com/bhartigautam156/lasso v0.0.0-20251229100131-0f72619beec0/go.mod h1:svOYqeyBo4gQmXbwtPkJHvLpTx5auSa+wVmzoXT9f2k=
+github.com/bhartigautam156/wrangler/v3 v3.3.1-0.20251229122518-17d8c43b27b8 h1:ZK8BVzgiGJL3yrS2WBQ7E42KXJfYF2nXwd36z11+qLw=
+github.com/bhartigautam156/wrangler/v3 v3.3.1-0.20251229122518-17d8c43b27b8/go.mod h1:UywN9i54VZcAH9/BIxpUDnOZCiKapd95kJKcEFUcrAY=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

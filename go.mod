@@ -2,7 +2,7 @@ module github.com/rancher/remotedialer-proxy
 
 go 1.25.0
 
-toolchain go1.25.4
+toolchain go1.25.5
 
 require (
 	github.com/gorilla/mux v1.8.1

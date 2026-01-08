@@ -19,6 +19,8 @@ build:
 push-image:
 	@echo "Pushing image $(REPO)/$(IMAGE):$(TAG) for platforms $(TARGET_PLATFORMS)"
 	docker buildx build \
+		--sbom=true \
+		--attest type=provenance,mode=max \
 		--tag $(REPO)/$(IMAGE):$(TAG) \
 		--file $(DOCKERFILE) \
 		--platform $(TARGET_PLATFORMS) \

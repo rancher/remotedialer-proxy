@@ -10,7 +10,7 @@ require (
 	github.com/rancher/dynamiclistener v0.7.3-rc.1
 	github.com/rancher/remotedialer v0.6.0-rc.1
 	github.com/rancher/wrangler/v3 v3.3.2-rc.1
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
 	k8s.io/api v0.35.0
 	k8s.io/apimachinery v0.35.0

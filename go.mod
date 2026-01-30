@@ -7,7 +7,7 @@ toolchain go1.25.6
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
-	github.com/rancher/dynamiclistener v0.7.3-rc.1
+	github.com/rancher/dynamiclistener v0.7.3
 	github.com/rancher/remotedialer v0.6.0-rc.1
 	github.com/rancher/wrangler/v3 v3.3.2-rc.1
 	github.com/sirupsen/logrus v1.9.4

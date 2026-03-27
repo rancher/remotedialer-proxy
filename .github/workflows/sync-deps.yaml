@@ -27,7 +27,7 @@ jobs:
     name: Sync dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: rancher-eio/read-vault-secrets@main
+      - uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
         with:
           secrets: |
             github/token/rancher--rancher--pull_requests--write token | GH_TOKEN

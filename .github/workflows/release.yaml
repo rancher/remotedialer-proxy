@@ -17,8 +17,8 @@ jobs:
       - name: Install helm
         env:
           # renovate: datasource=github-release-attachments depName=helm/helm
-          HELM_VERSION: "v3.20.1"
-          # renovate: datasource=github-release-attachments depName=helm/helm digestVersion=v3.20.1
+          HELM_VERSION: v3.20.2
+          # renovate: datasource=github-release-attachments depName=helm/helm digestVersion=v3.20.2
           HELM_CHECKSUM_amd64: "0165ee4a2db012cc657381001e593e981f42aa5707acdd50658326790c9d0dc3"
         run: |
           curl -sLO https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz

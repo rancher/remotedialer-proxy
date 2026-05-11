@@ -19,7 +19,7 @@ jobs:
           # renovate: datasource=github-release-attachments depName=helm/helm
           HELM_VERSION: v3.20.2
           # renovate: datasource=github-release-attachments depName=helm/helm digestVersion=v3.20.2
-          HELM_CHECKSUM_amd64: "0165ee4a2db012cc657381001e593e981f42aa5707acdd50658326790c9d0dc3"
+          HELM_CHECKSUM_amd64: 258e830a9e613c8a7a302d6059b4bb3b9758f2f3e1bb8ea0d707ce10a9a72fea
         run: |
           curl -sLO https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz
           echo "${HELM_CHECKSUM_amd64}  helm-${HELM_VERSION}-linux-amd64.tar.gz" | sha256sum -c -

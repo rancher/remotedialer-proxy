@@ -7,7 +7,7 @@ toolchain go1.24.6
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
-	github.com/rancher/dynamiclistener v0.7.5
+	github.com/rancher/dynamiclistener v0.7.6
 	github.com/rancher/remotedialer v0.6.0
 	github.com/rancher/wrangler/v3 v3.3.5
 	github.com/sirupsen/logrus v1.9.4
@@ -50,7 +50,7 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.44.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect

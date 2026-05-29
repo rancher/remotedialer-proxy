@@ -1,19 +1,27 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - v*
+  workflow_dispatch:
 
-permissions:
-  contents: write
+permissions: {}
 
 env:
   REGISTRY: docker.io
   REPO: rancher
 
 jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure ref is a tag
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+            echo "::error::This workflow must be dispatched on a tag ref (got ${GITHUB_REF_TYPE} '${GITHUB_REF}')"
+            exit 1
+          fi
+
   release:
+    needs: guard
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -66,6 +74,7 @@ jobs:
             gh --repo "${{ github.repository }}" release create ${{ github.ref_name }} --verify-tag --generate-notes remotedialer-proxy*.tgz
           fi
   image:
+    needs: guard
     runs-on: ubuntu-latest
     permissions:
       contents: read

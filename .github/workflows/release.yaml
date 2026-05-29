@@ -1,12 +1,23 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - v*
+  workflow_dispatch:
+
+permissions: {}
 
 jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure ref is a tag
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+            echo "::error::This workflow must be dispatched on a tag ref (got ${GITHUB_REF_TYPE} '${GITHUB_REF}')"
+            exit 1
+          fi
+
   release:
+    needs: guard
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -64,6 +75,7 @@ jobs:
           fi
 
   publish:
+    needs: guard
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -94,7 +94,7 @@ jobs:
             secret/data/github/repo/${{ github.repository }}/rancher-prime-stg-registry/credentials username | PRIME_STG_REGISTRY_USERNAME ;
             secret/data/github/repo/${{ github.repository }}/rancher-prime-stg-registry/credentials password | PRIME_STG_REGISTRY_PASSWORD ;
       - name: Publish image
-        uses: rancher/ecm-distro-tools/actions/publish-image@4fcb19b689b42fbcb5f1f9e6d85fabc3e70e4a5c # v0.69.1
+        uses: rancher/ecm-distro-tools/actions/publish-image@57efae19ae57d43912001846ffb7f5613706fead # v0.69.2
         with:
           image: remotedialer-proxy
           tag: ${{ github.ref_name }}

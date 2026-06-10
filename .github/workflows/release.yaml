@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure ref is a tag
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+            echo "::error::This workflow must be dispatched on a tag ref (got ${GITHUB_REF_TYPE} '${GITHUB_REF}')"
+            exit 1
+          fi
+
+  release:
+    needs: guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install helm
+        env:
+          # renovate: datasource=github-release-attachments depName=helm/helm
+          HELM_VERSION: v4.2.0
+          # renovate: datasource=github-release-attachments depName=helm/helm digestVersion=v4.2.0
+          HELM_CHECKSUM_amd64: 97dbeb971be4ac4b27e3839976d9564c0fb35c6f3b1da89dd1e292d236af4096
+        run: |
+          curl -sLO https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz
+          echo "${HELM_CHECKSUM_amd64}  helm-${HELM_VERSION}-linux-amd64.tar.gz" | sha256sum -c -
+          tar xvzf helm-${HELM_VERSION}-linux-amd64.tar.gz -C /usr/local/bin --strip-components=1
+          rm helm-${HELM_VERSION}-linux-amd64.tar.gz
+
+      - name: Create helm tarball
+        env:
+          HELM_TAG: "${{ github.ref_name }}"
+        run: |
+          mkdir -p build dist/artifacts
+          cp -rf charts build/
+
+          # Remove prefix `v` because it's not needed
+          HELM_CHART_VERSION=$(echo "$HELM_TAG" | sed 's|^v||')
+
+          sed -i \
+              -e 's/^version:.*/version: '${HELM_CHART_VERSION}'/' \
+              -e 's/appVersion:.*/appVersion: '${HELM_CHART_VERSION}'/' \
+              build/charts/remotedialer-proxy/Chart.yaml
+
+          sed -i \
+              -e 's/tag:.*/tag: '${HELM_TAG}'/' \
+              build/charts/remotedialer-proxy/values.yaml
+
+          helm package -d ./dist/artifacts ./build/charts/remotedialer-proxy
+
+      - name: Create release on Github
+        env:
+          GH_TOKEN:  ${{ github.token }}
+        run: |
+          cd dist/artifacts
+
+          if gh --repo "${{ github.repository }}" release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} already exists."
+          else
+            if [[ "${{ github.ref_name }}" == *-rc* ]]; then
+              gh --repo "${{ github.repository }}" release create ${{ github.ref_name }} --verify-tag --generate-notes --prerelease remotedialer-proxy*.tgz
+            else
+              gh --repo "${{ github.repository }}" release create ${{ github.ref_name }} --verify-tag --generate-notes remotedialer-proxy*.tgz
+            fi
+          fi
+
+  publish:
+    needs: guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Required for cosign signing
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: "Read vault secrets"
+        uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
+        with:
+          secrets: |
+            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials username | PUBLIC_USERNAME;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials password | PUBLIC_PASSWORD;
+            secret/data/github/repo/${{ github.repository }}/rancher-prime-stg-registry/credentials registry | PRIME_STG_REGISTRY ;
+            secret/data/github/repo/${{ github.repository }}/rancher-prime-stg-registry/credentials username | PRIME_STG_REGISTRY_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/rancher-prime-stg-registry/credentials password | PRIME_STG_REGISTRY_PASSWORD ;
+      - name: Publish image
+        uses: rancher/ecm-distro-tools/actions/publish-image@da9f5b6e258c327660eeab3db97952b612f1cf9f # v0.69.3
+        with:
+          image: remotedialer-proxy
+          tag: ${{ github.ref_name }}
+          platforms: linux/amd64,linux/arm64
+          
+          public-registry: docker.io
+          public-repo: rancher
+          public-username: ${{ env.PUBLIC_USERNAME }}
+          public-password: ${{ env.PUBLIC_PASSWORD }}
+
+          push-to-prime: true
+          prime-repo: rancher
+          prime-make-target: push-prime-image
+          identity-registry: ${{ vars.PRIME_REGISTRY_HOSTNAME }}
+          prime-registry: ${{ env.PRIME_STG_REGISTRY }}
+          prime-username: ${{ env.PRIME_STG_REGISTRY_USERNAME }}
+          prime-password: ${{ env.PRIME_STG_REGISTRY_PASSWORD }}

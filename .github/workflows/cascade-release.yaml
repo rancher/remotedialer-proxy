@@ -1,0 +1,303 @@
+name: Cascade release across charts and rancher
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. v0.7.4-rc.3)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run - validate only, do not trigger workflows'
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      prev_version: ${{ steps.derive.outputs.prev_version }}
+      charts_branch: ${{ steps.derive.outputs.charts_branch }}
+      rancher_branch: ${{ steps.derive.outputs.rancher_branch }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Validate version format
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "::error::Version '$VERSION' must match v<major>.<minor>.<patch>[-prerelease]"
+            exit 1
+          fi
+
+      - name: Derive branch mappings and previous version
+        id: derive
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Extract minor version (e.g. v0.7.4-rc.3 -> v0.7)
+          minor_version=$(echo "$VERSION" | sed -E 's/^(v[0-9]+\.[0-9]+)\..*/\1/')
+
+          # Map to charts/rancher branches via VERSION.md
+          case "$minor_version" in
+            v0.7)
+              charts_branch="dev-v2.14"
+              rancher_branch="release/v2.14"
+              ;;
+            v0.8)
+              charts_branch="dev-v2.15"
+              rancher_branch="main"
+              ;;
+            v0.6)
+              charts_branch="dev-v2.13"
+              rancher_branch="release/v2.13"
+              ;;
+            *)
+              echo "::error::Unknown minor version $minor_version (check VERSION.md)"
+              exit 1
+              ;;
+          esac
+
+          echo "charts_branch=$charts_branch" >> "$GITHUB_OUTPUT"
+          echo "rancher_branch=$rancher_branch" >> "$GITHUB_OUTPUT"
+
+          # Find previous tag in same minor line
+          prev_version=$(git tag -l "${minor_version}.*" | grep -E '\-rc\.' | sort --version-sort | tail -n1 || echo "")
+          if [ -z "$prev_version" ]; then
+            echo "::error::Could not determine previous version for $minor_version"
+            exit 1
+          fi
+          echo "prev_version=$prev_version" >> "$GITHUB_OUTPUT"
+
+          echo "Cascade plan:"
+          echo "  New version: $VERSION"
+          echo "  Previous version: $prev_version"
+          echo "  Charts branch: $charts_branch"
+          echo "  Rancher branch: $rancher_branch"
+
+  cut-tag:
+    needs: validate
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Trigger cut-release workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh workflow run cut-release.yaml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$GITHUB_REF_NAME" \
+            --field version="$VERSION"
+
+          echo "Triggered cut-release for $VERSION"
+          echo "This will create the tag and trigger the image release workflow"
+
+  wait-for-release:
+    needs: [validate, cut-tag]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Wait for tag creation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          echo "Waiting for tag $VERSION to be created..."
+          for i in {1..30}; do
+            if git ls-remote --tags origin | grep -q "refs/tags/$VERSION$"; then
+              echo "Tag $VERSION created"
+              break
+            fi
+            echo "Attempt $i/30: tag not yet created, waiting 10s..."
+            sleep 10
+          done
+
+          if ! git ls-remote --tags origin | grep -q "refs/tags/$VERSION$"; then
+            echo "::error::Tag $VERSION was not created within 5 minutes"
+            exit 1
+          fi
+
+      - name: Wait for release workflow completion
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          echo "Waiting for release.yaml workflow to complete for tag $VERSION..."
+
+          # Poll for workflow run triggered by the tag
+          for i in {1..60}; do
+            run_id=$(gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow release.yaml \
+              --json databaseId,headBranch,status,conclusion \
+              --jq ".[] | select(.headBranch == \"$VERSION\") | .databaseId" \
+              | head -n1)
+
+            if [ -n "$run_id" ]; then
+              status=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json status --jq .status)
+              conclusion=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+
+              echo "Release workflow run $run_id status: $status ($conclusion)"
+
+              if [ "$status" = "completed" ]; then
+                if [ "$conclusion" = "success" ]; then
+                  echo "Release workflow completed successfully"
+                  break
+                else
+                  echo "::error::Release workflow failed with conclusion: $conclusion"
+                  exit 1
+                fi
+              fi
+            fi
+
+            echo "Attempt $i/60: workflow not complete, waiting 30s..."
+            sleep 30
+          done
+
+          if [ -z "$run_id" ] || [ "$status" != "completed" ]; then
+            echo "::error::Release workflow did not complete within 30 minutes"
+            exit 1
+          fi
+
+  bump-charts:
+    needs: [validate, wait-for-release]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    outputs:
+      pr_number: ${{ steps.find_pr.outputs.pr_number }}
+    steps:
+      - name: Trigger release-charts workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHARTS_BRANCH: ${{ needs.validate.outputs.charts_branch }}
+          PREV_VERSION: ${{ needs.validate.outputs.prev_version }}
+          NEW_VERSION: ${{ inputs.version }}
+        run: |
+          gh workflow run release-charts.yaml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$GITHUB_REF_NAME" \
+            --field charts_ref="$CHARTS_BRANCH" \
+            --field prev_remotedialer="$PREV_VERSION" \
+            --field new_remotedialer="$NEW_VERSION"
+
+          echo "Triggered charts bump: $PREV_VERSION -> $NEW_VERSION (branch: $CHARTS_BRANCH)"
+
+      - name: Find charts PR number
+        id: find_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_VERSION: ${{ inputs.version }}
+          CHARTS_BRANCH: ${{ needs.validate.outputs.charts_branch }}
+        run: |
+          echo "Waiting for charts PR to be created..."
+          sleep 30
+
+          for i in {1..20}; do
+            pr_number=$(gh pr list \
+              --repo rancher/charts \
+              --base "$CHARTS_BRANCH" \
+              --search "Bump remotedialer-proxy to $NEW_VERSION in:title" \
+              --json number \
+              --jq '.[0].number' || echo "")
+
+            if [ -n "$pr_number" ]; then
+              echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
+              echo "Charts PR created: rancher/charts#$pr_number"
+              break
+            fi
+
+            echo "Attempt $i/20: PR not found, waiting 15s..."
+            sleep 15
+          done
+
+          if [ -z "$pr_number" ]; then
+            echo "::warning::Could not find charts PR within 5 minutes - check manually"
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+          fi
+
+  wait-for-charts-merge:
+    needs: [validate, bump-charts]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Poll for charts PR merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.bump-charts.outputs.pr_number }}
+          CHARTS_BRANCH: ${{ needs.validate.outputs.charts_branch }}
+        run: |
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::error::No PR number available - cannot wait for merge"
+            echo "Please merge the charts PR manually and re-run bump-rancher job"
+            exit 1
+          fi
+
+          echo "Polling rancher/charts#$PR_NUMBER for merge..."
+
+          for i in {1..120}; do
+            state=$(gh pr view "$PR_NUMBER" \
+              --repo rancher/charts \
+              --json state,merged \
+              --jq '.state + ":" + (.merged|tostring)')
+
+            pr_state=$(echo "$state" | cut -d: -f1)
+            pr_merged=$(echo "$state" | cut -d: -f2)
+
+            if [ "$pr_merged" = "true" ]; then
+              echo "Charts PR merged successfully"
+              break
+            fi
+
+            if [ "$pr_state" = "CLOSED" ]; then
+              echo "::error::Charts PR was closed without merging"
+              exit 1
+            fi
+
+            echo "Attempt $i/120: PR state=$pr_state, merged=$pr_merged, waiting 60s..."
+            sleep 60
+          done
+
+          if [ "$pr_merged" != "true" ]; then
+            echo "::error::Charts PR not merged within 2 hours"
+            exit 1
+          fi
+
+  bump-rancher:
+    needs: [validate, wait-for-charts-merge]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Trigger release-rancher workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RANCHER_BRANCH: ${{ needs.validate.outputs.rancher_branch }}
+          PREV_VERSION: ${{ needs.validate.outputs.prev_version }}
+          NEW_VERSION: ${{ inputs.version }}
+        run: |
+          gh workflow run release-rancher.yaml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$GITHUB_REF_NAME" \
+            --field rancher_ref="$RANCHER_BRANCH" \
+            --field prev_remotedialer="$PREV_VERSION" \
+            --field new_remotedialer="$NEW_VERSION"
+
+          echo "Triggered rancher bump: $PREV_VERSION -> $NEW_VERSION (branch: $RANCHER_BRANCH)"
+          echo ""
+          echo "Cascade complete! Check rancher/rancher for the bump PR."

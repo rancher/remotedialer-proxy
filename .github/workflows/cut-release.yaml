@@ -61,22 +61,62 @@ jobs:
           VERSION: ${{ inputs.version }}
           ALLOWED: ${{ steps.minor.outputs.allowed }}
         run: |
+          # When no stable tag exists, any patch base is accepted for both stable and prerelease.
+          # Once a stable tag exists, the next version must follow strictly.
+          #
+          # latest_stable   latest_rc       input              result
+          # ─────────────   ─────────────   ─────────────────  ──────────────────────────────
+          # none            —               v0.5.0             ✓
+          # none            —               v0.5.1             ✓ any base allowed when no stable exists
+          # v0.5.0          —               v0.5.1             ✓
+          # v0.5.0          —               v0.5.2             ✗ skips v0.5.1
+          # none            —               v0.5.0-rc.1        ✓
+          # none            —               v0.5.1-rc.1        ✓ any base allowed when no stable exists
+          # v0.5.0          —               v0.5.1-rc.1        ✓
+          # v0.5.0          v0.5.1-rc.1     v0.5.1-rc.2        ✓
+          # v0.5.0          v0.5.1-rc.1     v0.5.1-rc.3        ✗ skips rc.2
+          # v0.5.0          v0.5.1-rc.3     v0.5.1-rc.2        ✗ rc goes backward
           v_core="${VERSION%%-*}"
-          latest=$(git tag -l "${ALLOWED}.*" | grep -v -- '-' | sort --version-sort | tail -n1 || true)
-          if [ -z "$latest" ]; then
-            if [ "$v_core" != "${ALLOWED}.0" ]; then
-              echo "::error::No prior ${ALLOWED} tags; first version must be ${ALLOWED}.0 (got $v_core)"
-              exit 1
+          latest_stable=$(git tag -l "${ALLOWED}.*" | grep -v -- '-' | sort --version-sort | tail -n1 || true)
+
+          if [[ "$VERSION" == *-* ]]; then
+            # Prerelease: if a stable tag exists, v_core must be the next patch after it
+            if [ -n "$latest_stable" ]; then
+              patch="${latest_stable##*.}"
+              expected_core="${ALLOWED}.$((patch + 1))"
+              if [ "$v_core" != "$expected_core" ]; then
+                echo "::error::Prerelease base $v_core does not match expected next patch $expected_core (latest stable: $latest_stable)"
+                exit 1
+              fi
             fi
-            echo "First release on ${ALLOWED} line: OK"
+            # RC number (assumed format X.N) must be sequential among prereleases for this base
+            rc_num="${VERSION##*.}"
+            latest_rc_num=$(git tag -l "${v_core}-*" | grep -oE '[0-9]+$' | sort -n | tail -n1 || true)
+            if [ -z "$latest_rc_num" ]; then
+              if [ "$rc_num" != "1" ]; then
+                echo "::error::No prior ${v_core} prerelease tags; first must end in .1 (got $VERSION)"
+                exit 1
+              fi
+              echo "First prerelease for ${v_core}: OK"
+            else
+              expected_rc_num="$((latest_rc_num + 1))"
+              if [ "$rc_num" != "$expected_rc_num" ]; then
+                echo "::error::Latest ${v_core} prerelease ends in .$latest_rc_num; next must end in .$expected_rc_num (got $VERSION)"
+                exit 1
+              fi
+              echo "Next sequential prerelease for ${v_core}: OK"
+            fi
           else
-            patch="${latest##*.}"
-            expected="${ALLOWED}.$((patch + 1))"
-            if [ "$v_core" != "$expected" ]; then
-              echo "::error::Latest ${ALLOWED} tag is $latest; next must be $expected (got $v_core)"
-              exit 1
+            # Stable: if a stable tag exists, must be the next patch after it
+            if [ -n "$latest_stable" ]; then
+              patch="${latest_stable##*.}"
+              expected="${ALLOWED}.$((patch + 1))"
+              if [ "$v_core" != "$expected" ]; then
+                echo "::error::Latest ${ALLOWED} tag is $latest_stable; next must be $expected (got $v_core)"
+                exit 1
+              fi
             fi
-            echo "Next sequential after $latest: OK"
+            echo "Next sequential after ${latest_stable:-none}: OK"
           fi
 
       - name: Validate tag does not already exist

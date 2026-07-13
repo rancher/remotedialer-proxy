@@ -1,4 +1,4 @@
-FROM rancher/hardened-build-base:v1.25.11b1@sha256:3e20264111abe175898f6fe502eadf56abd61222fcb1ac348539b3f106c4dcb4 AS builder
+FROM rancher/hardened-build-base:v1.25.12b1@sha256:1b586caca4f7027277aeeab1e9e2831c6760daf8877df8d921081e74763c3021 AS builder
 WORKDIR /app
 
 COPY . .

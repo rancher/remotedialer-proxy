@@ -5,9 +5,9 @@ go 1.26.5
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
-	github.com/rancher/dynamiclistener v0.9.0
+	github.com/rancher/dynamiclistener v0.9.1
 	github.com/rancher/remotedialer v0.6.1
-	github.com/rancher/wrangler/v3 v3.7.1-rc.2
+	github.com/rancher/wrangler/v3 v3.7.1
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
 	k8s.io/api v0.36.0
@@ -38,6 +38,7 @@ require (
 	github.com/go-openapi/swag/typeutils v0.25.4 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.4 // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
+	github.com/google/renameio/v2 v2.0.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/moby/spdystream v0.5.1 // indirect

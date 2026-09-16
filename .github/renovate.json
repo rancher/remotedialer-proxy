@@ -21,7 +21,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^\\.github/workflows/[^/]+\\.ya?ml$"],
+      "managerFilePatterns": [
+        "/^\.github/workflows/[^/]+\.ya?ml$/"
+      ],
       "matchStringsStrategy": "recursive",
       "matchStrings": [
         "HELM_VERSION:\\s*(?<currentValue>[^\\r\\n\\s]+)\\n[\\s\\S]*",

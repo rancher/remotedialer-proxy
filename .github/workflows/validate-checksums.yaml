@@ -1,0 +1,63 @@
+name: Validate Checksums
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/release.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/release.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-helm-checksum:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Extract Helm version and checksum from workflow
+        id: extract
+        run: |
+          HELM_VERSION=$(grep -A2 "Install helm" .github/workflows/release.yaml | grep "HELM_VERSION:" | awk '{print $2}')
+          HELM_CHECKSUM=$(grep -A3 "Install helm" .github/workflows/release.yaml | grep "HELM_CHECKSUM_amd64:" | awk '{print $2}')
+
+          if [ -z "$HELM_VERSION" ] || [ -z "$HELM_CHECKSUM" ]; then
+            echo "::error::Failed to extract HELM_VERSION or HELM_CHECKSUM_amd64 from workflow file"
+            exit 1
+          fi
+
+          echo "version=$HELM_VERSION" >> $GITHUB_OUTPUT
+          echo "checksum=$HELM_CHECKSUM" >> $GITHUB_OUTPUT
+          echo "Found HELM_VERSION: $HELM_VERSION"
+          echo "Found HELM_CHECKSUM_amd64: $HELM_CHECKSUM"
+
+      - name: Verify checksum matches official Helm release
+        env:
+          HELM_VERSION: ${{ steps.extract.outputs.version }}
+          EXPECTED_CHECKSUM: ${{ steps.extract.outputs.checksum }}
+        run: |
+          echo "Fetching official checksum for Helm $HELM_VERSION..."
+          OFFICIAL_CHECKSUM=$(curl -sSfL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum" | awk '{print $1}')
+
+          if [ -z "$OFFICIAL_CHECKSUM" ]; then
+            echo "::error::Failed to fetch official checksum from https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum"
+            exit 1
+          fi
+
+          echo "Official checksum: $OFFICIAL_CHECKSUM"
+          echo "Workflow checksum: $EXPECTED_CHECKSUM"
+
+          if [ "$OFFICIAL_CHECKSUM" != "$EXPECTED_CHECKSUM" ]; then
+            echo "::error::Checksum mismatch for Helm $HELM_VERSION"
+            echo "::error::Expected: $EXPECTED_CHECKSUM"
+            echo "::error::Official: $OFFICIAL_CHECKSUM"
+            echo "::error::Please update HELM_CHECKSUM_amd64 in .github/workflows/release.yaml"
+            exit 1
+          fi
+
+          echo "✓ Checksum verified successfully"

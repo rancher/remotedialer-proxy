@@ -7,7 +7,7 @@ require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/rancher/dynamiclistener v0.6.1
 	github.com/rancher/remotedialer v0.4.4
-	github.com/rancher/wrangler/v3 v3.0.1-rc.2
+	github.com/rancher/wrangler/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.4
 	k8s.io/api v0.33.1
 	k8s.io/apimachinery v0.33.1

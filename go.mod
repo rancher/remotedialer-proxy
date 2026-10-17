@@ -1,6 +1,6 @@
 module github.com/rancher/remotedialer-proxy
 
-go 1.26.5
+go 1.26.9
 
 require (
 	github.com/gorilla/mux v1.8.1

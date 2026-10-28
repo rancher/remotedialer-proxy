@@ -82,12 +82,7 @@ fi
 
 yq --inplace ".remoteDialerProxyVersion = \"${NEW_CHART_VERSION}+up${NEW_REMOTEDIALER_VERSION_SHORT}\"" ./build.yaml
 
-# Downloads dapper
-make .dapper
-
-# DAPPER_MODE=bind will make sure we output everything that changed
-DAPPER_MODE=bind ./.dapper go generate ./... || true
-DAPPER_MODE=bind ./.dapper rm -rf go .config
+go generate ./...
 
 git add .
 git commit -m "Bump remotedialer to ${NEW_CHART_VERSION}+up${NEW_REMOTEDIALER_VERSION_SHORT}"

@@ -48,6 +48,7 @@ jobs:
           sed -i \
               -e 's/^version:.*/version: '${HELM_CHART_VERSION}'/' \
               -e 's/appVersion:.*/appVersion: '${HELM_CHART_VERSION}'/' \
+              -e 's|image: rancher/remotedialer-proxy:latest|image: rancher/remotedialer-proxy:'${HELM_TAG}'|' \
               build/charts/remotedialer-proxy/Chart.yaml
 
           sed -i \

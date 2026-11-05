@@ -6,7 +6,7 @@ RUN go mod download
 
 RUN CGO_ENABLED=0 go build -o /app/bin/proxy ./cmd/proxy
 
-FROM registry.suse.com/bci/bci-nano:15.7
+FROM registry.suse.com/bci/bci-nano:15.7@sha256:d1be13bb0d62a65c42d890e1123cb8542ac5dafead62b31e92e5b28456c72827
 COPY --from=builder /app/bin/proxy /usr/bin/proxy
 USER 1000
 CMD ["/usr/bin/proxy"]

@@ -1,11 +1,12 @@
-FROM rancher/hardened-build-base:v1.26.10b1@sha256:26dcc4246e80d6d4604ecd6bad835628940cdde68b5543dd3b02cbee962e92d5 AS builder
+FROM registry.rancher.com/rancher/appco-go:1.26.10@sha256:9cfad6bf7b959068b56127614ab68391b31ebc509b347178ce7d9cdcca884eba AS builder
 WORKDIR /app
 
 COPY . .
 RUN go mod download
 
-RUN CGO_ENABLED=0 go build -o proxy ./cmd/proxy
+RUN CGO_ENABLED=0 go build -o /app/bin/proxy ./cmd/proxy
 
-FROM scratch
-COPY --from=builder /app/proxy .
-CMD ["./proxy"]
+FROM registry.suse.com/bci/bci-nano:16.0@sha256:7e8c9850a70b319ecf9f58c01f91cae605a4770cb0c69ae6ee379a14136af4bf
+COPY --from=builder /app/bin/proxy /usr/bin/proxy
+USER 1000
+CMD ["/usr/bin/proxy"]

@@ -1,4 +1,4 @@
-FROM registry.rancher.com/rancher/appco-go:1.26.10@sha256:9cfad6bf7b959068b56127614ab68391b31ebc509b347178ce7d9cdcca884eba AS builder
+FROM registry.suse.com/rancher/appco-go:1.26.10@sha256:9cfad6bf7b959068b56127614ab68391b31ebc509b347178ce7d9cdcca884eba AS builder
 WORKDIR /app
 
 COPY . .

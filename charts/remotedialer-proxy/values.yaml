@@ -27,7 +27,6 @@ service:
   proxyPort: 6666
   peerPort: 6666
   caName: "api-extension-ca-name"
-  certCAName: "api-extension-cert-ca-name"
   tlsName: "api-extension-tls-name"
   certCAName: "api-extension-ca"
 

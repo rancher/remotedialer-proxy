@@ -25,6 +25,8 @@ env:
 jobs:
   create-charts-pr:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/rancher/ci-image/go1.26:1.26.11
     permissions:
       contents: read
       # Required for vault
@@ -60,8 +62,9 @@ jobs:
           GH_TOKEN: ${{ env.GH_TOKEN }}
           APP_USER: "rancher-pr-and-push-remotedialer-proxy[bot]"
 
-      - name: Install dependencies
-        run: sudo snap install yq --channel=v4/stable
+      - name: Git safe directory
+        # Checkouts live in subdirectories owned by the runner user.
+        run: git config --global --add safe.directory '*'
 
       - name: Run release script
         run: |

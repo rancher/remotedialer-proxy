@@ -5,10 +5,6 @@ on:
 
 permissions: {}
 
-env:
-  REGISTRY: docker.io
-  REPO: rancher
-
 jobs:
   guard:
     runs-on: ubuntu-latest
@@ -74,111 +70,43 @@ jobs:
           else
             gh --repo "${{ github.repository }}" release create ${{ github.ref_name }} --verify-tag --generate-notes remotedialer-proxy*.tgz
           fi
-  image:
+
+  publish:
     needs: guard
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
-    strategy:
-      matrix:
-        arch:
-          - amd64
-          - arm64
-    name: Build and push proxy image
+      id-token: write # Required for cosign signing
     steps:
-      - name : Checkout repository
-        # https://github.com/actions/checkout/releases/tag/v4.1.1
+      - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: "Read vault secrets"
         uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
         with:
           secrets: |
-            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials username | DOCKER_USERNAME;
-            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials password | DOCKER_PASSWORD
+            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials username | PUBLIC_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials password | PUBLIC_PASSWORD ;
+            secret/data/github/repo/${{ github.repository }}/rancher-prime-stg-registry/credentials registry | PRIME_STG_REGISTRY ;
+            secret/data/github/repo/${{ github.repository }}/rancher-prime-stg-registry/credentials username | PRIME_STG_REGISTRY_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/rancher-prime-stg-registry/credentials password | PRIME_STG_REGISTRY_PASSWORD
 
-      - name: Set up QEMU
-        # https://github.com/docker/setup-qemu-action/releases/tag/v3.1.0
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-        # https://github.com/docker/setup-buildx-action/releases/tag/v3.4.0
-
-      - name: Log in to the Container registry
-        # https://github.com/docker/login-action/releases/tag/v3.2.0
-        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
+      - name: Publish image
+        uses: rancher/ecm-distro-tools/actions/publish-image@ee852bce72b895986f953b67d03430130dfae62d # v0.78.2
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ env.DOCKER_USERNAME }}
-          password: ${{ env.DOCKER_PASSWORD }}
+          image: remotedialer-proxy
+          tag: ${{ github.ref_name }}
+          platforms: linux/amd64,linux/arm64
 
-      - name: Build and push the remotedialer image
-        id: build
-        # https://github.com/docker/build-push-action/releases/tag/v6.3.0
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile.proxy
-          platforms: "linux/${{ matrix.arch }}"
-          outputs: type=image,name=${{ env.REPO }}/remotedialer-proxy,push-by-digest=true,name-canonical=true,push=true
+          public-registry: docker.io
+          public-repo: rancher
+          public-username: ${{ env.PUBLIC_USERNAME }}
+          public-password: ${{ env.PUBLIC_PASSWORD }}
 
-      - name: Export digest
-        run: |
-          mkdir -p /tmp/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
-
-      - name: Upload digest
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        # https://github.com/actions/upload-artifact/releases/tag/v4.3.3
-        with:
-          name: digests-${{ matrix.arch }}
-          path: /tmp/digests/*
-          if-no-files-found: error
-          retention-days: 1
-
-  merge-images:
-    permissions:
-      id-token: write
-    runs-on: ubuntu-latest
-    needs: image
-    steps:
-      - name: Download digests
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        # https://github.com/actions/download-artifact/releases/tag/v4.1.7
-        with:
-          path: /tmp/digests
-          pattern: digests-*
-          merge-multiple: true
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-        # https://github.com/docker/setup-buildx-action/releases/tag/v3.4.0
-
-      - name: "Read vault secrets"
-        uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
-        with:
-          secrets: |
-            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials username | DOCKER_USERNAME ;
-            secret/data/github/repo/${{ github.repository }}/dockerhub/credentials password | DOCKER_PASSWORD
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
-        # https://github.com/docker/login-action/releases/tag/v3.2.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ env.DOCKER_USERNAME }}
-          password: ${{ env.DOCKER_PASSWORD }}
-
-      # setup tag name
-      - if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        run: |
-          echo TAG_NAME=$(echo $GITHUB_REF | sed -e "s|refs/tags/||") >> $GITHUB_ENV
-
-      - name: Create manifest list and push
-        working-directory: /tmp/digests
-        run: |
-          docker buildx imagetools create -t ${{ env.REGISTRY }}/${{ env.REPO }}/remotedialer-proxy:${{ env.TAG_NAME }} \
-            $(printf '${{ env.REPO }}/remotedialer-proxy@sha256:%s ' *)
+          push-to-prime: true
+          prime-repo: rancher
+          prime-make-target: push-prime-image
+          identity-registry: ${{ vars.PRIME_REGISTRY_HOSTNAME }}
+          prime-registry: ${{ env.PRIME_STG_REGISTRY }}
+          prime-username: ${{ env.PRIME_STG_REGISTRY_USERNAME }}
+          prime-password: ${{ env.PRIME_STG_REGISTRY_PASSWORD }}
